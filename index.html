@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hydrogen Fuel Cell Simulator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0b1020;
+            padding: 20px 0 40px;
+            display: flex;
+            justify-content: center;
+            color: #f5f7ff;
+        }
+
+        .container {
+            text-align: center;
+            width: 1000px;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+        }
+
+        h3 {
+            margin-top: 5px;
+            color: #c7d2ff;
+        }
+
+        /* ------------------ FUEL CELL BOX ------------------ */
+
+        .cell3d {
+            width: 750px;
+            height: 330px;
+            background: linear-gradient(145deg, #1b2338, #111827);
+            border: 2px solid #4b5563;
+            border-radius: 16px;
+            margin: 24px auto;
+            box-shadow: 0 18px 35px rgba(0,0,0,0.6);
+            position: relative;
+            overflow: visible;
+        }
+
+        .cell3d::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            border: 1px solid rgba(148,163,184,0.4);
+            pointer-events: none;
+        }
+
+        .glow-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            box-shadow: 0 0 40px rgba(56,189,248,0.0);
+            pointer-events: none;
+            transition: box-shadow 1s ease;
+            z-index: 1;
+        }
+
+        .fuelcell-inner {
+            position: absolute;
+            inset: 60px 40px 40px 40px;
+            border-radius: 12px;
+            background: radial-gradient(circle at 20% 20%, #1f2937, #020617);
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: stretch;
+            z-index: 2;
+        }
+
+        .chamber {
+            position: relative;
+            flex: 1;
+            margin: 8px;
+            border-radius: 10px;
+            border: 1px solid #4b5563;
+            overflow: hidden;
+        }
+
+        .chamber-left {
+            background: radial-gradient(circle at 20% 80%, #0f172a, #020617);
+        }
+
+        .chamber-right {
+            background: radial-gradient(circle at 80% 20%, #0f172a, #020617);
+        }
+
+        .chamber-label {
+            position: absolute;
+            bottom: 4px;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            color: #e5e7eb;
+            letter-spacing: 1px;
+        }
+
+        .membrane {
+            position: relative;
+            width: 90px;
+            margin: 8px 0;
+            border-radius: 10px;
+            border: 1px solid #6b7280;
+            background: linear-gradient(180deg, #111827, #020617);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .membrane::before {
+            content: "PEM";
+            position: absolute;
+            font-size: 12px;
+            color: #9ca3af;
+            top: 6px;
+        }
+
+        /* ------------------ WIRE + BULB ------------------ */
+
+        .wire-top {
+            position: absolute;
+            top: 10px;
+            left: 80px;
+            right: 80px;
+            height: 30px;
+            border-radius: 999px;
+            border: 1px solid #4b5563;
+            background: radial-gradient(circle at 10% 50%, #111827, #020617);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 80px;
+            z-index: 5;
+        }
+
+        .wire-electrons {
+            position: relative;
+            flex: 1;
+            height: 100%;
+        }
+
+        .electron {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+            animation: electronFlow 2s linear 1;
+        }
+
+        @keyframes electronFlow {
+            0% { transform: translateX(-10px); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateX(300px); opacity: 0; }
+        }
+
+        .bulb-container {
+            position: relative;
+            width: 40px;
+            height: 40px;
+        }
+
+        .bulb {
+            position: absolute;
+            left: 50%;
+            top: 4px;
+            transform: translateX(-50%);
+            width: 22px;
+            height: 28px;
+            border-radius: 50% 50% 40% 40%;
+            border: 2px solid #e5e7eb;
+            background: none;
+            box-shadow: none;
+            transition: box-shadow 0.6s ease, background 0.6s ease;
+             
+        }
+        
+        .filament {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            width: 18px;
+            height: 6px;
+            transform: translateX(-50%);
+            border-top: 2px solid #facc15;
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        /* When bulb is ON */
+        .bulb.on .filament {
+            opacity: 1;
+            box-shadow: 0 0 6px #facc15;
+        }
+
+        .bulb.on {
+            background: radial-gradient(circle at 30% 20%, rgba(250,204,21,0.9), rgba(30,64,175,0.1));
+            box-shadow: 0 0 18px rgba(250,204,21,0.9);
+        }
+
+        .bulb-base {
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 14px;
+            height: 6px;
+            border-radius: 3px;
+            background: #9ca3af;
+        }
+
+        /* ------------------ PARTICLES ------------------ */
+
+        .bubble {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(56,189,248,0.9);
+            background: radial-gradient(circle at 30% 30%, rgba(191,219,254,0.9), rgba(15,23,42,0.2));
+            box-shadow: 0 0 10px rgba(56,189,248,0.8);
+            animation: bubbleRise 4s linear 1;
+        }
+
+        @keyframes bubbleRise {
+            0% { transform: translateY(40px) scale(0.7); opacity: 0; }
+            10% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateY(-120px) scale(1.1); opacity: 0; }
+        }
+
+        .proton {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: #f97316;
+            box-shadow: 0 0 8px #f97316;
+            animation: protonFlow 2.5s linear 1;
+        }
+
+        @keyframes protonFlow {
+            0% { transform: translateY(80px); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-80px); opacity: 0; }
+        }
+
+        .o2 {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 999px;
+            border: 2px solid #a855f7;
+            box-shadow: 0 0 8px rgba(168,85,247,0.8);
+            animation: o2Float 5s linear 1;
+        }
+
+        @keyframes o2Float {
+            0% { transform: translateY(-20px); opacity: 0; }
+            10% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateY(120px); opacity: 0; }
+        }
+
+        .droplet {
+            position: absolute;
+            width: 6px;
+            height: 12px;
+            border-radius: 999px;
+            background: #38bdf8;
+            box-shadow: 0 0 10px rgba(56,189,248,0.9);
+            animation: dropletFall 3s linear 1;
+        }
+
+        @keyframes dropletFall {
+            0% { transform: translateY(-10px); opacity: 0; }
+            10% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateY(120px); opacity: 0; }
+        }
+
+        /* ------------------ ARROWS ------------------ */
+
+        .arrow {
+            position: absolute;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+            font-size: 13px;
+            color: #e5e7eb;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* ------------------ LEGEND ------------------ */
+
+        .legend {
+            position: fixed;
+            right: 24px;
+            bottom: 80px;
+            background: rgba(15,23,42,0.9);
+            border-radius: 10px;
+            border: 1px solid #4b5563;
+            padding: 8px 10px;
+            font-size: 11px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+            max-width: 220px;
+            z-index: 10;
+        }
+
+        .legend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            color: #e5e7eb;
+        }
+
+        .legend-body {
+            margin-top: 6px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .legend-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 999px;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+
+        .legend-h2 {
+            border: 1px solid rgba(56,189,248,0.9);
+            background: radial-gradient(circle at 30% 30%, rgba(191,219,254,0.9), rgba(15,23,42,0.2));
+        }
+
+        .legend-hplus {
+            background: #f97316;
+        }
+
+        .legend-electron {
+            background: #22c55e;
+        }
+
+        .legend-o2 {
+            border: 2px solid #a855f7;
+        }
+
+        .legend-h2o {
+            background: #38bdf8;
+        }
+
+        /* ------------------ OUTPUT BOX ------------------ */
+
+        .output-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #020617;
+            border-radius: 10px;
+            width: 480px;
+            margin-left: auto;
+            margin-right: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+            border: 1px solid #4b5563;
+            text-align: left;
+        }
+
+        .output-box p {
+            margin: 4px 0;
+            font-family: "Consolas", "Fira Code", monospace;
+            font-size: 14px;
+        }
+
+        .small-label {
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        .footer {
+            margin-top: 24px;
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        /* ------------------ CONTROLS ------------------ */
+
+        .controls {
+            margin-top: 10px;
+        }
+
+        .controls label {
+            display: inline-block;
+            margin-top: 6px;
+        }
+
+        input[type="number"] {
+            width: 160px;
+            padding: 5px;
+            font-size: 14px;
+            background: #020617;
+            border: 1px solid #4b5563;
+            border-radius: 6px;
+            color: #e5e7eb;
+        }
+
+        select {
+            padding: 5px;
+            font-size: 14px;
+            background: #020617;
+            border: 1px solid #4b5563;
+            border-radius: 6px;
+            color: #e5e7eb;
+        }
+
+        input[type="range"] {
+            width: 200px;
+        }
+
+        button {
+            padding: 10px 22px;
+            font-size: 15px;
+            margin-top: 12px;
+            cursor: pointer;
+            border-radius: 999px;
+            border: 1px solid #38bdf8;
+            background: radial-gradient(circle at 30% 0%, #0ea5e9, #0369a1);
+            color: white;
+            box-shadow: 0 10px 20px rgba(8,47,73,0.8);
+        }
+
+        button:hover {
+            box-shadow: 0 14px 28px rgba(8,47,73,0.9);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <h1>Hydrogen Fuel Cell Simulator</h1>
+    <h3>Electrochemical Energy Conversion • H₂ + ½O₂ → H₂O</h3>
+
+    <!-- CONTROLS -->
+    <div class="controls">
+        <div>
+            <label>Hydrogen input:</label><br>
+            <input id="h2_input" type="number" step="0.0001" value="1">
+            <select id="h2_unit">
+                <option value="ml">mL gas</option>
+                <option value="l">L gas</option>
+                <option value="g">grams H₂</option>
+                <option value="kg">kilograms H₂</option>
+            </select>
+        </div>
+
+        <div style="margin-top:10px;">
+            <label>Efficiency:</label><br>
+            <input id="eff_input" type="range" min="0" max="100" step="1" value="60">
+            <span id="eff_label">60%</span>
+        </div>
+
+        <div style="margin-top:10px;">
+            <label>Water output unit:</label>
+            <select id="water_unit">
+                <option value="ml">mL</option>
+                <option value="l">L</option>
+            </select>
+
+            &nbsp;&nbsp;
+
+            <label>Energy output unit:</label>
+            <select id="energy_unit">
+                <option value="kwh">kWh</option>
+                <option value="wh">Wh</option>
+            </select>
+        </div>
+
+        <button onclick="runSim()">Run Simulation</button>
+    </div>
+
+    <!-- FUEL CELL -->
+    <div class="cell3d">
+        <div class="glow-ring" id="glowRing"></div>
+
+        <!-- Wire + bulb -->
+        <div class="wire-top">
+            <div class="wire-electrons" id="wireElectrons"></div>
+            <div class="bulb-container">
+                <div class="bulb" id="bulb">
+                    <div class="filament"></div>
+                </div>
+                <div class="bulb-base"></div>
+            </div>
+        </div>
+
+        <!-- Subtle arrows (outside chambers) -->
+        <div class="arrow" id="arrowH2" style="left: 10px; top: 190px;">
+            H₂ →
+        </div>
+        <div class="arrow" id="arrowHplus" style="left: 360px; top: 120px;">
+            H⁺ →
+        </div>
+        <div class="arrow" id="arrowE" style="left: 300px; top: -5px;">
+            e⁻ →
+        </div>
+        <div class="arrow" id="arrowO2" style="right: 10px; top: 190px;">
+            ← O₂
+        </div>
+        <div class="arrow" id="arrowH2O" style="right: 200px; bottom: 40px;">
+            ↓ H₂O
+        </div>
+
+        <!-- Chambers -->
+        <div class="fuelcell-inner">
+            <div class="chamber chamber-left" id="leftChamber">
+                <div class="chamber-label">ANODE</div>
+            </div>
+
+            <div class="membrane" id="membrane"></div>
+
+            <div class="chamber chamber-right" id="rightChamber">
+                <div class="chamber-label">CATHODE</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OUTPUT -->
+    <div class="output-box">
+        <h3>Simulation Results</h3>
+        <p id="water_out">Water produced: —</p>
+        <p id="energy_out">Electrical energy: —</p>
+        <p id="debug_out" class="small-label"></p>
+    </div>
+
+    <div class="footer">
+        Created by Radheeka Weeraratne using HTML, CSS, JavaScript, and Flask • 2026.
+    </div>
+
+</div>
+
+<!-- LEGEND -->
+<div class="legend" id="legendBox">
+    <div class="legend-header" onclick="toggleLegend()">
+        <span>Legend</span>
+        <span id="legendToggle">▼</span>
+    </div>
+    <div class="legend-body" id="legendBody">
+        <div class="legend-item">
+            <div class="legend-swatch legend-h2"></div>
+            <span>H₂ gas (blue bubbles, left chamber)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch legend-hplus"></div>
+            <span>H⁺ ions (orange, through PEM)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch legend-electron"></div>
+            <span>e⁻ electrons (green, in external circuit)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch legend-o2"></div>
+            <span>O₂ gas (purple rings, right chamber)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch legend-h2o"></div>
+            <span>H₂O product (blue droplets, right chamber)</span>
+        </div>
+    </div>
+</div>
+
+<script>
+let animationTimeout = null;
+let bulbTimeout = null;
+
+function toggleLegend() {
+    const body = document.getElementById("legendBody");
+    const toggle = document.getElementById("legendToggle");
+    if (body.style.display === "none") {
+        body.style.display = "block";
+        toggle.textContent = "▼";
+    } else {
+        body.style.display = "none";
+        toggle.textContent = "▲";
+    }
+}
+
+function formatScientific(value) {
+    if (value === 0) return "0";
+    const exponent = Math.floor(Math.log10(Math.abs(value)));
+    const mantissa = value / Math.pow(10, exponent);
+    return mantissa.toFixed(5) + " × 10<sup>" + exponent + "</sup>";
+}
+
+function formatNumber(value) {
+    if (Math.abs(value) < 0.001 && value !== 0) {
+        return formatScientific(value);
+    }
+    return value.toFixed(12);
+}
+
+function convertToMoles(value, unit) {
+    const MOLAR_VOLUME = 24500; // mL/mol at ~25°C
+    const MOLAR_MASS = 2.016;   // g/mol for H2
+
+    switch(unit) {
+        case "ml":
+            return value / MOLAR_VOLUME;
+        case "l":
+            return (value * 1000) / MOLAR_VOLUME;
+        case "g":
+            return value / MOLAR_MASS;
+        case "kg":
+            return (value * 1000) / MOLAR_MASS;
+        default:
+            return 0;
+    }
+}
+
+function convertWater(value_ml, unit) {
+    if (unit === "l") return value_ml / 1000;
+    return value_ml;
+}
+
+function convertEnergy(value_kwh, unit) {
+    if (unit === "wh") return value_kwh * 1000;
+    return value_kwh;
+}
+
+document.getElementById("eff_input").oninput = function() {
+    document.getElementById("eff_label").innerText = this.value + "%";
+};
+
+function clearChildren(el) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+}
+
+function spawnBubbles(leftChamber, intensity) {
+    clearChildren(leftChamber);
+    const count = Math.max(3, Math.min(20, Math.round(intensity * 20)));
+    for (let i = 0; i < count; i++) {
+        const b = document.createElement("div");
+        b.className = "bubble";
+        const x = 10 + Math.random() * 70;
+        const delay = Math.random() * 2;
+        const scale = 0.7 + Math.random() * 0.6;
+        b.style.left = x + "px";
+        b.style.bottom = "0px";
+        b.style.animationDuration = (3 + Math.random() * 2) + "s";
+        b.style.animationDelay = delay + "s";
+        b.style.transform = "scale(" + scale + ")";
+        leftChamber.appendChild(b);
+    }
+}
+
+function spawnOxygen(rightChamber, intensity) {
+    const existing = rightChamber.querySelectorAll(".o2");
+    existing.forEach(e => e.remove());
+    const count = Math.max(2, Math.min(10, Math.round(intensity * 10)));
+    for (let i = 0; i < count; i++) {
+        const o = document.createElement("div");
+        o.className = "o2";
+        const x = 10 + Math.random() * 70;
+        const delay = Math.random() * 3;
+        o.style.left = x + "px";
+        o.style.top = "-10px";
+        o.style.animationDuration = (4 + Math.random() * 3) + "s";
+        o.style.animationDelay = delay + "s";
+        rightChamber.appendChild(o);
+    }
+}
+
+function spawnDroplets(rightChamber, waterIntensity) {
+    const existing = rightChamber.querySelectorAll(".droplet");
+    existing.forEach(e => e.remove());
+    const count = Math.max(1, Math.min(15, Math.round(waterIntensity * 15)));
+    for (let i = 0; i < count; i++) {
+        const d = document.createElement("div");
+        d.className = "droplet";
+        const x = 60 + Math.random() * 20;
+        const delay = Math.random() * 2.5;
+        d.style.left = x + "px";
+        d.style.top = "-5px";
+        d.style.animationDuration = (2.5 + Math.random() * 2) + "s";
+        d.style.animationDelay = delay + "s";
+        rightChamber.appendChild(d);
+    }
+}
+
+function spawnElectrons(wire, efficiency) {
+    clearChildren(wire);
+    const count = Math.max(3, Math.min(18, Math.round(efficiency * 18)));
+    for (let i = 0; i < count; i++) {
+        const e = document.createElement("div");
+        e.className = "electron";
+        const y = 6 + Math.random() * 10;
+        const delay = Math.random() * 1.5;
+        const speedFactor = 1.8 - efficiency * 1.2;
+        e.style.top = y + "px";
+        e.style.left = "0px";
+        e.style.animationDuration = (1.5 + speedFactor) + "s";
+        e.style.animationDelay = delay + "s";
+        wire.appendChild(e);
+    }
+}
+
+function spawnProtons(membrane, intensity) {
+    clearChildren(membrane);
+    const count = Math.max(2, Math.min(10, Math.round(intensity * 10)));
+    for (let i = 0; i < count; i++) {
+        const p = document.createElement("div");
+        p.className = "proton";
+        const x = 20 + Math.random() * 30;
+        const delay = Math.random() * 2.5;
+        p.style.left = x + "px";
+        p.style.top = "80px";
+        p.style.animationDuration = (2 + Math.random() * 1.5) + "s";
+        p.style.animationDelay = delay + "s";
+        membrane.appendChild(p);
+    }
+}
+
+function updateGlow(efficiency, resting=false) {
+    const ring = document.getElementById("glowRing");
+    let strength = 0.1 + efficiency * 0.6;
+    if (resting) strength = 0.15;
+    ring.style.boxShadow = "0 0 40px rgba(56,189,248," + strength + ")";
+}
+
+function setBulb(on) {
+    const bulb = document.getElementById("bulb");
+    if (on) bulb.classList.add("on");
+    else bulb.classList.remove("on");
+}
+
+function showArrows(show) {
+    const ids = ["arrowH2", "arrowHplus", "arrowE", "arrowO2", "arrowH2O"];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.opacity = show ? "1" : "0";
+    });
+}
+
+function runSim() {
+    const h2_value = parseFloat(document.getElementById("h2_input").value);
+    const h2_unit = document.getElementById("h2_unit").value;
+    const efficiency_percent = parseFloat(document.getElementById("eff_input").value);
+
+    const water_unit = document.getElementById("water_unit").value;
+    const energy_unit = document.getElementById("energy_unit").value;
+
+    if (isNaN(h2_value) || h2_value <= 0) {
+        alert("Please enter a valid positive hydrogen amount.");
+        return;
+    }
+
+    if (animationTimeout) clearTimeout(animationTimeout);
+    if (bulbTimeout) clearTimeout(bulbTimeout);
+
+    const efficiency = efficiency_percent / 100.0;
+    const h2_moles = convertToMoles(h2_value, h2_unit);
+
+    // --- PURE JS BACKEND (replaces Flask) ---
+    const F = 96485;
+    const E_REV = 1.23;
+
+    const water_ml = h2_moles * 18;
+    const Q = h2_moles * 2 * F;
+    const E_cell = E_REV * efficiency;
+    const W_joules = Q * E_cell;
+    const energy_kwh = W_joules / 3.6e6;
+
+    const data = {
+        water_ml: water_ml,
+        energy_kwh: energy_kwh
+    };
+
+    // --- UPDATE UI ---
+    const water_out = convertWater(data.water_ml, water_unit);
+    const energy_out = convertEnergy(data.energy_kwh, energy_unit);
+
+    document.getElementById("water_out").innerHTML =
+        "Water produced: " + formatNumber(water_out) + " " + water_unit;
+
+    document.getElementById("energy_out").innerHTML =
+        "Electrical energy: " + formatNumber(energy_out) + " " + energy_unit;
+
+    document.getElementById("debug_out").innerHTML =
+        "n(H₂) = " + formatScientific(h2_moles) + " mol, η = " +
+        efficiency_percent.toFixed(1) + "%";
+
+    const leftChamber = document.getElementById("leftChamber");
+    const rightChamber = document.getElementById("rightChamber");
+    const membrane = document.getElementById("membrane");
+    const wire = document.getElementById("wireElectrons");
+
+    const moleIntensity = Math.min(1, h2_moles / 0.1);
+    const waterIntensity = Math.min(1, data.water_ml / 100.0);
+    const effIntensity = efficiency;
+
+    spawnBubbles(leftChamber, moleIntensity);
+    spawnOxygen(rightChamber, moleIntensity);
+    spawnDroplets(rightChamber, waterIntensity);
+    spawnElectrons(wire, effIntensity);
+    spawnProtons(membrane, moleIntensity);
+    updateGlow(efficiency, false);
+    setBulb(false);
+    showArrows(true);
+
+    bulbTimeout = setTimeout(() => setBulb(true), 700);
+
+    animationTimeout = setTimeout(() => {
+        clearChildren(leftChamber);
+        clearChildren(rightChamber);
+        clearChildren(membrane);
+        clearChildren(wire);
+        setBulb(false);
+        updateGlow(efficiency, true);
+        showArrows(false);
+    }, 10000);
+}
+</script>
+
+</body>
+</html>
